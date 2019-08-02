@@ -16,7 +16,7 @@ class VMTestCase(ut.TestCase):
         if memory is not None: vm.initialize_memory(*memory)
         
         vm.assemble(programs, verbose=verbose, other_tokens=extra_tokens)
-
+        
         for name, trace in zip(names, traces):
             vm.load(name, trace[0])
     
@@ -31,10 +31,12 @@ class VMTestCase(ut.TestCase):
                     print(t,vm.state_string())
                     print({r: state[r] for r in vm.register_names+["mf"]})
                     print(trace[t])
+                print("trace[t]",trace[t])
+                print("Check",{r: state[r] for r in vm.register_names})
                 self.assertTrue(
                     {r: state[r] for r in vm.register_names} == trace[t])
                 vm.step(verbose=verbose)
-            
+            print("t and len(trace)",t,len(trace))
             self.assertTrue(t == len(trace))
 
     # @ut.skip("")
@@ -511,7 +513,7 @@ class VMTestCase(ut.TestCase):
             trace0, # start: mov r0 5
             trace1, # exit
             ]
-
+        #print(trace)
         self._test({"test": program}, ["test"], [trace],
             num_registers=num_registers, verbose=0)
 
@@ -538,11 +540,11 @@ class NVMOrthogonalTestCase(VMTestCase):
             verbose=verbose)
 
 if __name__ == "__main__":
-    test_suite = ut.TestLoader().loadTestsFromTestCase(RefVMTestCase)
-    ut.TextTestRunner(verbosity=2).run(test_suite)
+    # test_suite = ut.TestLoader().loadTestsFromTestCase(RefVMTestCase)
+    # ut.TextTestRunner(verbosity=2).run(test_suite)
 
     test_suite = ut.TestLoader().loadTestsFromTestCase(NVMTestCase)
     ut.TextTestRunner(verbosity=2).run(test_suite)
 
-    test_suite = ut.TestLoader().loadTestsFromTestCase(NVMOrthogonalTestCase)
-    ut.TextTestRunner(verbosity=2).run(test_suite)
+    # test_suite = ut.TestLoader().loadTestsFromTestCase(NVMOrthogonalTestCase)
+    # ut.TextTestRunner(verbosity=2).run(test_suite)

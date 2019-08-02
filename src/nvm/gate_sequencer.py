@@ -1,4 +1,6 @@
 import numpy as np
+import torch as tr
+from tensor import *
 from layer import Layer
 from coder import Coder
 from sequencer import Sequencer
@@ -25,7 +27,7 @@ class GateSequencer(Sequencer, object):
     def make_gate_output(self, ungate=[]):
         """Make gate output pattern where specified gate key units are on"""
 
-        pattern = self.gate_output.activator.off * np.ones((self.gate_output.size,1))
+        pattern = self.gate_output.activator.off * tr.ones((self.gate_output.size,1))
 
         # Ungate provided keys
         for k in self.default_gates + ungate:
@@ -98,18 +100,18 @@ class GateSequencer(Sequencer, object):
         X, _, Z = XYZ
         X = X[:self.gate_hidden.size + 1,:] # hidden layer portion with bias
         Z = Z[:self.gate_hidden.size + 1,:] # hidden layer portion with bias
-        Y = np.concatenate((
-            np.concatenate(self.intermediate_outputs, axis=1), # intermediate output
-            np.concatenate(self.transit_outputs, axis=1), # transit output
-        ),axis=1)
+        Y = tr.cat((
+            tr.cat(self.intermediate_outputs, dim=1), # intermediate output
+            tr.cat(self.transit_outputs, dim=1), # transit output
+        ),dim=1)
 
         # solve linear equations for output
-        XZ = np.concatenate((X, Z), axis=1)
+        XZ = tr.cat((X, Z), dim=1)
         f = self.gate_output.activator.f
         g = self.gate_output.activator.g
-        W = np.linalg.lstsq(XZ.T, g(Y).T, rcond=None)[0].T
+        W = totensor(np.linalg.lstsq(fromtensor(tr.transpose(XZ,0,1)), fromtensor(tr.transpose(g(Y),0,1)), rcond=None)[0].T)
         
-        residual = max(residual, np.fabs(f(W.dot(XZ)) - Y).max())
+        residual = max(residual, tr.abs(f(tr.matmul(W,XZ)) - Y).max())
         if verbose: print("gate sequencer residual = %f"%residual)
 
         # update weights and bias with output
@@ -135,15 +137,15 @@ if __name__ == '__main__':
     coder = Coder(act)
 
     layer_names = ['mem','ip','opc','op1','op2','op3']
-    layers = [Layer(name, N, act, coder) for name in layer_names]
+    layers = [Layer(name, [N], act, coder) for name in layer_names]
 
     NL = len(layers) + 2 # +2 for gate out/hidden
     NG = NL**2 + NL
     NH = 100
     actg = heaviside_activator(NG)
     acth = act_fun(PAD,NH)
-    gate_output = Layer('gates', NG, actg, Coder(actg))
-    gate_hidden = Layer('ghide', NH, acth, Coder(acth))
+    gate_output = Layer('gates', [NG], actg, Coder(actg))
+    gate_hidden = Layer('ghide', [NH], acth, Coder(acth))
     layers.extend([gate_hidden, gate_output])
     
     gate_map = gm.make_nvm_gate_map([layer.name for layer in layers])

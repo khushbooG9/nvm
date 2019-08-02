@@ -1,4 +1,5 @@
 import numpy as np
+import torch as tr
 from learning_rules import *
 from preprocessing import preprocess
 
@@ -38,8 +39,8 @@ def assemble(nvmnet, programs, verbose=False, orthogonal=False, other_tokens=[])
     ### Sequence ip
     if verbose: print("Sequencing ip -> ip")
     weights[("ip","ip")], biases[("ip","ip")], dc = learn(
-        np.zeros((ip_patterns.shape[0], ip_patterns.shape[0])),
-        np.zeros((ip_patterns.shape[0], 1)),
+        tr.zeros((ip_patterns.shape[0], ip_patterns.shape[0])),
+        tr.zeros((ip_patterns.shape[0], 1)),
         ip_patterns[:,:-1], ip_patterns[:,1:],
         nvmnet.layers["ip"].activator,
         nvmnet.layers["ip"].activator,
@@ -50,8 +51,8 @@ def assemble(nvmnet, programs, verbose=False, orthogonal=False, other_tokens=[])
     ### Link instructions to ip
     for i,x in enumerate("c12"):
         if verbose: print("Linking ip -> op"+x)
-        weights[("op"+x,"ip")] = np.zeros((nvmnet.layers["op"+x].size, nvmnet.layers["ip"].size))
-        biases[("op"+x,"ip")] = np.zeros((nvmnet.layers["op"+x].size, 1))
+        weights[("op"+x,"ip")] = tr.zeros((nvmnet.layers["op"+x].size, nvmnet.layers["ip"].size))
+        biases[("op"+x,"ip")] = tr.zeros((nvmnet.layers["op"+x].size, 1))
         for name in programs:
             encodings = nvmnet.layers["op"+x].encode_tokens(
                 [line[i] for line in lines[name]])
@@ -88,8 +89,8 @@ def assemble(nvmnet, programs, verbose=False, orthogonal=False, other_tokens=[])
         
         # Learn associations
         weights[pathway], biases[pathway], dc = learn(
-            np.zeros((to_layer.size, from_layer.size)),
-            np.zeros((to_layer.size, 1)),
+            tr.zeros((to_layer.size, from_layer.size)),
+            tr.zeros((to_layer.size, 1)),
             X, Y, from_layer.activator, to_layer.activator,
             nvmnet.learning_rules[pathway],
             verbose=verbose)
@@ -108,9 +109,9 @@ if __name__ == '__main__':
 
     from nvm_net import NVMNet
     # activator, learning_rule = logistic_activator, logistic_hebbian
-    activator, learning_rule = tanh_activator, tanh_hebbian
+    activator, learning_rule = tanh_activator, hebbian
     # changing devices to registers
-    nvmnet = NVMNet(layer_size, pad, activator, learning_rule, register)
+    nvmnet = NVMNet(layer_size, pad, activator, learning_rule, registers)
 
     program = """
     
@@ -133,17 +134,20 @@ start:  nop
         line = ""
         for x in "c12":
             opx = nvmnet.layers["op"+x]
-            o = opx.activator.f(weights[("op"+x,"ip")].dot(v) + biases[("op"+x,"ip")])
+            #o = opx.activator.f(weights[("op"+x,"ip")].dot(v) + biases[("op"+x,"ip")])
+            o = opx.activator.f(tr.matmul(weights[("op"+x,"ip")],v) + biases[("op"+x,"ip")])
             line += " " + opx.coder.decode(o)
             if x == 'c' and opx.coder.decode(o) == "jmp": jmp = True
             if x == 'c' and opx.coder.decode(o) == "end": end = True
-        v = f(weights[("ip","ip")].dot(v) + biases[("ip","ip")])
+        #v = f(weights[("ip","ip")].dot(v) + biases[("ip","ip")])
+        v = f(tr.matmul(weights[("ip","ip")],v) + biases[("ip","ip")])
         line = ip.coder.decode(v) + " " + line
         print(line)
         if end: break
         if jmp:
             v = nvmnet.layers["op2"].coder.encode("start")    
-            v = f(weights[("ip","op2")].dot(v) + biases[("ip","op2")])
+            #v = f(weights[("ip","op2")].dot(v) + biases[("ip","op2")])
+            v = f(tr.matmul(weights[("ip","op2")],v) + biases[("ip","op2")])
             jmp = False
 
     print(ip.coder.decode(v))

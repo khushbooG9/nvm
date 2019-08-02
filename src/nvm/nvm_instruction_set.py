@@ -33,21 +33,21 @@ def flash_instruction_set(nvmnet, verbose=False):
     h = gate_hidden.coder.encode('start')
     g = gs.make_gate_output() # start with default gates
     gate_output.coder.encode('start', g)
-    g_start, h_start = g.copy(), h.copy()
+    g_start, h_start = g.clone(), h.clone()
 
     g, h = gs.add_transit(
         ungate = gprog(),
         old_gates = g_start, old_hidden = h_start)
     gate_output.coder.encode('load', g)
     gate_hidden.coder.encode('load', h)
-    g_load, h_load = g.copy(), h.copy()
+    g_load, h_load = g.clone(), h.clone()
     
     # Let opcode bias the gate layer
     g, h = gs.add_transit(ungate = [('gh','opc','u')],
         old_gates = g_load, old_hidden=h_load)
 
     # Ready to execute instruction
-    g_ready, h_ready = g.copy(), h.copy()
+    g_ready, h_ready = g.clone(), h.clone()
     gate_hidden.coder.encode('ready', h_ready)
     gate_output.coder.encode('ready', g_ready)
     
@@ -63,7 +63,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     # Let op1 bias the gate layer
     g, h = gs.add_transit(ungate = [('gh','op1','u')],
         old_gates = g_ready, old_hidden = h_ready, opc='movv')
-    g_movv, h_movv = g.copy(), h.copy()
+    g_movv, h_movv = g.clone(), h.clone()
     gate_hidden.coder.encode('movv', h_movv)
     gate_output.coder.encode('op1', g_movv)
     for name, register in registers.items():
@@ -86,7 +86,7 @@ def flash_instruction_set(nvmnet, verbose=False):
         ('gh','op1','u'),('gh','op2','u')
         ],
         old_gates = g_ready, old_hidden = h_ready, opc='movd')
-    g_movd, h_movd = g.copy(), h.copy()
+    g_movd, h_movd = g.clone(), h.clone()
     gate_hidden.coder.encode('movd', h_movd)
     gate_output.coder.encode('movd', g_movd)
     for from_name, from_register in registers.items():
@@ -109,7 +109,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     # Let co bias the gate layer
     g, h = gs.add_transit(ungate = [('gh','co','u')],
         old_gates = g_ready, old_hidden = h_ready, opc='jie')
-    g_jie, h_jie = g.copy(), h.copy()
+    g_jie, h_jie = g.clone(), h.clone()
     gate_hidden.coder.encode('jie', h_jie)
     gate_output.coder.encode('jie', g_jie)
 
@@ -139,7 +139,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     # Open flow from op1 to ip
     g, h = gs.add_transit(ungate = gflow('ip','op1'),
         old_gates = g_ready, old_hidden = h_ready, opc='jmpv')
-    g_jmpv, h_jmpv = g.copy(), h.copy()
+    g_jmpv, h_jmpv = g.clone(), h.clone()
     gate_hidden.coder.encode('jmpv', h_jmpv)
     gate_output.coder.encode('ip<op1', g_jmpv)
 
@@ -156,7 +156,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     # Let op1 bias the gate layer
     g, h = gs.add_transit(ungate = [('gh','op1','u')],
         old_gates = g_ready, old_hidden = h_ready, opc='jmpd')
-    g_jmpd, h_jmpd = g.copy(), h.copy()
+    g_jmpd, h_jmpd = g.clone(), h.clone()
     gate_hidden.coder.encode('jmpd', h_jmpd)
     for register in registers:
 
@@ -165,7 +165,7 @@ def flash_instruction_set(nvmnet, verbose=False):
             ungate = gflow('ip', register),
             old_gates = g_jmpd, old_hidden = h_jmpd,
             op1 = register)
-        g_jmpd_dev, h_jmpd_dev = g.copy(), h.copy()
+        g_jmpd_dev, h_jmpd_dev = g.clone(), h.clone()
         gate_hidden.coder.encode('jmpd_'+register, h_jmpd_dev)
         gate_output.coder.encode('jmpd_'+register, g_jmpd_dev)
 
@@ -182,7 +182,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     # Let op1 bias the gate layer
     g, h = gs.add_transit(ungate = [('gh','op1','u')],
         old_gates = g_ready, old_hidden = h_ready, opc='mem')
-    g_mem, h_mem = g.copy(), h.copy()
+    g_mem, h_mem = g.clone(), h.clone()
     gate_hidden.coder.encode('mem', h_mem)
     for register in registers:
 
@@ -191,7 +191,7 @@ def flash_instruction_set(nvmnet, verbose=False):
             ungate = [(register, 'mf', 'l')],
             old_gates = g_mem, old_hidden = h_mem,
             op1 = register)
-        g_mem_dev, h_mem_dev = g.copy(), h.copy()
+        g_mem_dev, h_mem_dev = g.clone(), h.clone()
         gate_hidden.coder.encode('mem_'+register, h_mem_dev)
         gate_output.coder.encode('mem_'+register, g_mem_dev)
 
@@ -205,7 +205,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     # Let op1 bias the gate layer
     g, h = gs.add_transit(ungate = [('gh','op1','u')],
         old_gates = g_ready, old_hidden = h_ready, opc='rem')
-    g_rem, h_rem = g.copy(), h.copy()
+    g_rem, h_rem = g.clone(), h.clone()
     gate_hidden.coder.encode('rem', h_rem)
     for register in registers:
 
@@ -214,7 +214,7 @@ def flash_instruction_set(nvmnet, verbose=False):
             ungate = gflow(register, 'mf'),
             old_gates = g_rem, old_hidden = h_rem,
             op1 = register)
-        g_rem_dev, h_rem_dev = g.copy(), h.copy()
+        g_rem_dev, h_rem_dev = g.clone(), h.clone()
         gate_hidden.coder.encode('rem_'+register, h_rem_dev)
         gate_output.coder.encode('rem_'+register, g_rem_dev)
 
@@ -229,7 +229,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     g, h = gs.add_transit(
         ungate = gflow('mf', 'mf') + gflow('mb', 'mf'),
         old_gates = g_ready, old_hidden = h_ready, opc='nxt')
-    g_nxt, h_nxt = g.copy(), h.copy()
+    g_nxt, h_nxt = g.clone(), h.clone()
     gate_hidden.coder.encode('nxt', h_nxt)
     gate_output.coder.encode('nxt', g_nxt)
 
@@ -244,7 +244,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     g, h = gs.add_transit(
         ungate = gflow('mb', 'mb') + gflow('mf', 'mb'),
         old_gates = g_ready, old_hidden = h_ready, opc='prv')
-    g_prv, h_prv = g.copy(), h.copy()
+    g_prv, h_prv = g.clone(), h.clone()
     gate_hidden.coder.encode('prv', h_prv)
     gate_output.coder.encode('prv', g_prv)
 
@@ -259,7 +259,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     g, h = gs.add_transit(
         ungate = [('gh','op1','u')],
         old_gates = g_ready, old_hidden = h_ready, opc='cmpd')
-    g_cmpd, h_cmpd = g.copy(), h.copy()
+    g_cmpd, h_cmpd = g.clone(), h.clone()
     gate_hidden.coder.encode('cmpd', h_cmpd)
     gate_output.coder.encode('cmpd', g_cmpd)
     for cmpd_a_name, cmpd_a_register in registers.items():
@@ -282,7 +282,7 @@ def flash_instruction_set(nvmnet, verbose=False):
         g, h = gs.add_transit(
             ungate = [('gh','op2','u')],
             old_gates = g, old_hidden = h)
-        g_cmpd2, h_cmpd2 = g.copy(), h.copy()
+        g_cmpd2, h_cmpd2 = g.clone(), h.clone()
         gate_hidden.coder.encode('cmpd2_'+cmpd_a_name, h_cmpd2)
         gate_output.coder.encode('cmpd2', g_cmpd2)
         for cmpd_b_name, cmpd_b_register in registers.items():
@@ -313,7 +313,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     g, h = gs.add_transit(
         ungate = [('gh','op1','u')],
         old_gates = g_ready, old_hidden = h_ready, opc='cmpv')
-    g_cmpv, h_cmpv = g.copy(), h.copy()
+    g_cmpv, h_cmpv = g.clone(), h.clone()
     gate_hidden.coder.encode('cmpv', h_cmpv)
     gate_output.coder.encode('cmpv', g_cmpv)
     for cmpv_a_name, cmpv_a_register in registers.items():
@@ -357,7 +357,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     g, h = gs.add_transit(
         ungate = [('ip', 'sf', 'l')],
         old_gates = g_ready, old_hidden = h_ready, opc='subv')
-    g_subv, h_subv = g.copy(), h.copy()
+    g_subv, h_subv = g.clone(), h.clone()
     gate_hidden.coder.encode('subv', h_subv)
     gate_output.coder.encode('subv', g_subv)
 
@@ -365,14 +365,14 @@ def flash_instruction_set(nvmnet, verbose=False):
     g, h = gs.add_transit(
         ungate = gflow('sf', 'sf') + gflow('sb', 'sf'),
         old_gates = g_subv, old_hidden = h_subv)
-    g_subv_nxt, h_subv_nxt = g.copy(), h.copy()
+    g_subv_nxt, h_subv_nxt = g.clone(), h.clone()
     gate_hidden.coder.encode('subv_nxt', h_subv_nxt)
     gate_output.coder.encode('subv_nxt', g_subv_nxt)
 
     # Open flow from op1 to ip
     g, h = gs.add_transit(ungate = gflow('ip','op1'),
         old_gates = g_subv_nxt, old_hidden = h_subv_nxt)
-    g_subv_jmp, h_subv_jmp = g.copy(), h.copy()
+    g_subv_jmp, h_subv_jmp = g.clone(), h.clone()
     gate_hidden.coder.encode('subv_jmp', h_subv_jmp)
 
     # Stabilize ip
@@ -389,7 +389,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     g, h = gs.add_transit(
         ungate = [('ip', 'sf', 'l')],
         old_gates = g_ready, old_hidden = h_ready, opc='subd')
-    g_subd, h_subd = g.copy(), h.copy()
+    g_subd, h_subd = g.clone(), h.clone()
     gate_hidden.coder.encode('subd', h_subd)
     gate_output.coder.encode('subd', g_subd)
 
@@ -397,7 +397,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     g, h = gs.add_transit(
         ungate = gflow('sf', 'sf') + gflow('sb', 'sf'),
         old_gates = g_subd, old_hidden = h_subd)
-    g_subd_nxt, h_subd_nxt = g.copy(), h.copy()
+    g_subd_nxt, h_subd_nxt = g.clone(), h.clone()
     gate_hidden.coder.encode('subd_nxt', h_subd_nxt)
     gate_output.coder.encode('subd_nxt', g_subd_nxt)
 
@@ -405,7 +405,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     g, h = gs.add_transit(
         ungate = [('gh','op1','u')],
         old_gates = g_subd_nxt, old_hidden = h_subd_nxt)
-    g_subd_op1, h_subd_op1 = g.copy(), h.copy()
+    g_subd_op1, h_subd_op1 = g.clone(), h.clone()
     gate_hidden.coder.encode('subd_op1', h_subd_op1)
     gate_output.coder.encode('gh+op1', g_subd_op1)
     for subd_name, subd_register in registers.items():
@@ -413,7 +413,7 @@ def flash_instruction_set(nvmnet, verbose=False):
         g, h = gs.add_transit(ungate = gflow('ip', subd_name),
             old_gates = g_subd_op1, old_hidden = h_subd_op1,
             op1 = subd_name)
-        g_subd_jmp, h_subd_jmp = g.copy(), h.copy()
+        g_subd_jmp, h_subd_jmp = g.clone(), h.clone()
         gate_hidden.coder.encode('subd_' + subd_name + '_jmp', h_subd_jmp)
     
         # Stabilize ip
@@ -430,14 +430,14 @@ def flash_instruction_set(nvmnet, verbose=False):
     g, h = gs.add_transit(
         ungate = gflow('sb', 'sb') + gflow('sf', 'sb'),
         old_gates = g_ready, old_hidden = h_ready, opc='ret')
-    g_ret, h_ret = g.copy(), h.copy()
+    g_ret, h_ret = g.clone(), h.clone()
     gate_hidden.coder.encode('ret', h_ret)
     gate_output.coder.encode('ret', g_ret)
 
     # Open flow from sf to ip
     g, h = gs.add_transit(ungate = gflow('ip','sf'),
         old_gates = g_ret, old_hidden = h_ret)
-    g_ret_jmp, h_ret_jmp = g.copy(), h.copy()
+    g_ret_jmp, h_ret_jmp = g.clone(), h.clone()
     gate_hidden.coder.encode('ret_jmp', h_ret_jmp)
 
     # # Stabilize ip
@@ -453,7 +453,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     # Let op1 bias the gate layer
     g, h = gs.add_transit(ungate = [('gh','op1','u')],
         old_gates = g_ready, old_hidden = h_ready, opc='ref')
-    g_ref, h_ref = g.copy(), h.copy()
+    g_ref, h_ref = g.clone(), h.clone()
     gate_hidden.coder.encode('ref', h_ref)
     for register in registers:
 
@@ -462,7 +462,7 @@ def flash_instruction_set(nvmnet, verbose=False):
             ungate = [('m'+x, register, 'l') for x in "fb"],
             old_gates = g_ref, old_hidden = h_ref,
             op1 = register)
-        g_ref_dev, h_ref_dev = g.copy(), h.copy()
+        g_ref_dev, h_ref_dev = g.clone(), h.clone()
         gate_hidden.coder.encode('ref_'+register, h_ref_dev)
         gate_output.coder.encode('ref_'+register, g_ref_dev)
 
@@ -477,7 +477,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     g, h = gs.add_transit(
         ungate = [('gh','op1','u')],
         old_gates = g_ready, old_hidden = h_ready, opc='drf')
-    g_drf, h_drf = g.copy(), h.copy()
+    g_drf, h_drf = g.clone(), h.clone()
     gate_hidden.coder.encode('drf', h_drf)
     gate_output.coder.encode('drf', g_drf)
     for drf_name, drf_register in registers.items():
@@ -500,7 +500,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     # Let mb drive mp
     g, h = gs.add_transit(ungate = [('gh','op1','u')] + gflow('mp', 'mb'),
         old_gates = g_ready, old_hidden = h_ready, opc='mref')
-    g_mref, h_mref = g.copy(), h.copy()
+    g_mref, h_mref = g.clone(), h.clone()
     gate_hidden.coder.encode('mref', h_mref)
 
     h_mref_conv = gate_hidden.coder.encode('mref_conv')
@@ -525,7 +525,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     g, h = gs.add_transit(
         ungate = gflow('mf', 'mp') + gflow('mb', 'mp'),
         old_hidden = h_mref_conv)
-    g_mref_end, h_mref_end = g.copy(), h.copy()
+    g_mref_end, h_mref_end = g.clone(), h.clone()
     gate_hidden.coder.encode('mref_end', h_mref_end)
     gate_output.coder.encode('mref_end', g_mref_end)
 
@@ -540,7 +540,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     g, h = gs.add_transit(
         ungate = gflow('mp', 'mf'),
         old_gates = g_ready, old_hidden = h_ready, opc='mdrf')
-    g_mdrf, h_mdrf = g.copy(), h.copy()
+    g_mdrf, h_mdrf = g.clone(), h.clone()
     gate_hidden.coder.encode('mdrf_1', h_mdrf)
     gate_output.coder.encode('mdrf_1', g_mdrf)
 
@@ -548,7 +548,7 @@ def flash_instruction_set(nvmnet, verbose=False):
     g, h = gs.add_transit(
         ungate = gflow('mf', 'mp') + gflow('mb', 'mp'),
         old_gates = g_mdrf, old_hidden = h_mdrf)
-    g_mdrf, h_mdrf = g.copy(), h.copy()
+    g_mdrf, h_mdrf = g.clone(), h.clone()
     gate_hidden.coder.encode('mdrf_2', h_mdrf)
     gate_output.coder.encode('mdrf_2', g_mdrf)
 

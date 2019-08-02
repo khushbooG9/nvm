@@ -1,4 +1,4 @@
-import numpy as np
+import torch as tr
 import itertools as it
 
 class Coder:
@@ -30,7 +30,12 @@ class Coder:
         """
         # Encode if not already encoded
         if token not in self.encodings:
-            if pattern is None: pattern = self.activator.make_pattern()
+            #print(self.activator.label)
+            if pattern is None:
+                #print('here')
+                pattern = self.activator.make_pattern()
+            #print(token)
+            #print(pattern.t())
             self.encodings[token] = pattern
             self.decodings[self.activator.hash_pattern(pattern)] = token
         return self.encodings[token]
@@ -53,7 +58,7 @@ if __name__ == "__main__":
 
     c = Coder(activator)
     v = c.encode("TEST")
-    print(v.T)
+    print(tr.transpose(v, 0,1))
     print(c.decode(v))
-    print(c.encode("TEST").T)
+    print(tr.transpose(c.encode("TEST"), 0,1))
     print(c.decode(activator.make_pattern()))

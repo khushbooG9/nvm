@@ -197,16 +197,17 @@ jump:   jie end
 end:    exit
     
     """}
+    print("main", type(programs))
 
     rvm = RefVM(["r%d"%r for r in range(3)])
 
-    for name, program in programs.items():
-        rvm.assemble(program, name)
+    #for name, program in programs.items():
+    rvm.assemble(programs)
 
     rvm.load("test",{"r1":"B","r2":"C"})
 
     lines, labels = rvm.programs[rvm.active_program]
     for t in range(10):
         print(rvm.state_string())
-        if lines[rvm.registers["ip"]][0] == "exit": break
+        if lines[rvm.layers["ip"]][0] == "exit": break
         rvm.step()

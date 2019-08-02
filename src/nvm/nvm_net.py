@@ -1,4 +1,5 @@
 import numpy as np
+import torch as tr 
 from layer import Layer
 from coder import Coder
 from gate_map import make_nvm_gate_map
@@ -6,6 +7,7 @@ from activator import *
 from learning_rules import *
 from nvm_instruction_set import opcodes, flash_instruction_set
 from nvm_assembler import assemble
+from tensor import *
 from builtins import input
 
 def update_add(accumulator, summand):
@@ -34,10 +36,10 @@ def address_space(forward_layer, backward_layer, pointer_layer=None, orthogonal=
         for d_from in ['f','b']:
             key = (layers[d_to].name, layers[d_from].name)
             Y, X = A[d_to], A[d_from]
-            if d_from == 'f': X = np.roll(X, 1, axis=1)
-            if d_from == 'b': Y = np.roll(Y, 1, axis=1)
+            if d_from == 'f': X = tr.roll(X, 1, dims=1)
+            if d_from == 'b': Y = tr.roll(Y, 1, dims=1)
             weights[key], biases[key], _ = learn(
-                np.zeros((N, N)), np.zeros((N, 1)),
+                tr.zeros((N, N)), tr.zeros((N, 1)),
                 X, Y,
                 layers[d_from].activator,
                 layers[d_to].activator,
@@ -49,7 +51,7 @@ def address_space(forward_layer, backward_layer, pointer_layer=None, orthogonal=
             key = (layers[d_to].name, layers[d_from].name)
             Y, X = A[d_to], A[d_from]
             weights[key], biases[key], _ = learn(
-                np.zeros((N, N)), np.zeros((N, 1)),
+                tr.zeros((N, N)), tr.zeros((N, 1)),
                 X, Y,
                 layers[d_from].activator,
                 layers[d_to].activator,
@@ -87,9 +89,9 @@ class NVMNet:
         actc = activator(pad, NC)
         for c in ['ci','co']: layers[c] = Layer(c, c_shape, actc, Coder(actc))
         co_true = layers['co'].coder.encode('true')
-        layers['co'].coder.encode('false', np.array([
+        layers['co'].coder.encode('false', tr.tensor(np.array([
             [actc.on if tf == actc.off else actc.off]
-            for tf in co_true.flatten()]))
+            for tf in co_true.flatten()])))
 
         # add register layers
         layers.update(registers)
@@ -113,6 +115,7 @@ class NVMNet:
 
         # encode tokens
         self.orthogonal = orthogonal
+        #print("opcodes",self.layers["opc"])
         self.layers["opc"].encode_tokens(opcodes, orthogonal=orthogonal)
         # explicitly convert to list for python3
         all_tokens = list(set(tokens) | set(list(self.registers.keys()) + ["null"]))
@@ -143,8 +146,8 @@ class NVMNet:
         for (to_name, from_name) in connect_pairs:
             N_to = self.layers[to_name].size
             N_from = self.layers[from_name].size
-            self.weights[(to_name, from_name)] = np.zeros((N_to, N_from))
-            self.biases[(to_name, from_name)] = np.zeros((N_to, 1))
+            self.weights[(to_name, from_name)] = tr.zeros((N_to, N_from))
+            self.biases[(to_name, from_name)] = tr.zeros((N_to, 1))
 
         # initialize learning
         self.learning_rules = {
@@ -169,7 +172,7 @@ class NVMNet:
         open_gates = []
         for k in self.gate_map.gate_keys:
             g = self.gate_map.get_gate_value(k, pattern)
-            if np.fabs(g - a.on) < np.fabs(g - a.off):
+            if tr.abs(g - a.on) < tr.abs(g - a.off):
                 open_gates.append(k)
         return open_gates
 
@@ -184,7 +187,7 @@ class NVMNet:
     def load(self, program_name, activity):
         # default all layers to off state
         self.activity = {
-            name: layer.activator.off * np.ones((layer.size,1))
+            name: layer.activator.off * tr.ones((layer.size,1))
             for name, layer in self.layers.items()}
 
         # initialize gates
@@ -243,7 +246,7 @@ class NVMNet:
         ohr = 1. / (1. - self.pad)
 
         # activity
-        activity_new = {name: np.zeros(pattern.shape)
+        activity_new = {name: tr.zeros(pattern.shape)
             for name, pattern in self.activity.items()}
         for (to_layer, from_layer) in self.weights:
             u = self.gate_map.get_gate_value(
@@ -252,7 +255,10 @@ class NVMNet:
             if u > .5:
                 w = self.weights[(to_layer, from_layer)]
                 b = self.biases[(to_layer, from_layer)]
-                wvb = u * ohr * (w.dot(self.activity[from_layer]) + b)
+                #print("WWWW",w.dtype, b.dtype)
+                if not (isinstance(w.dtype, float) and isinstance(d.dtype, float)):
+                    w,b = w.float(), b.float()
+                wvb = u * ohr * (tr.matmul(w,self.activity[from_layer]) + b)
                 activity_new[to_layer] += wvb
 
         for name, layer in self.layers.items():
@@ -260,8 +266,18 @@ class NVMNet:
             s = (1 - self.pad) - d
 
             if s > .5:
-                wvb = self.w_gain[name] * self.activity[name] + self.b_gain[name]
-                activity_new[name] += s * ohr * wvb
+
+                if not isinstance(self.activity[name], torch.Tensor):
+                    self.activity[name] = totensor(self.activity[name])
+                #self.activity[name] = self.activity[name].double()
+                if not isinstance(self.activity[name].dtype, float):
+                    self.activity[name]=self.activity[name].float()
+                #print("type",self.activity[name].dtype)
+                #print(name, self.activity[name])
+                wvb = (self.w_gain[name] * self.activity[name] + self.b_gain[name])
+                #print("wvb",wvb.dtype)
+                #wvb = wvb.double()
+                activity_new[name] += (s * ohr * wvb)
     
         for name in activity_new:
             activity_new[name] = self.layers[name].activator.f(activity_new[name])
@@ -336,7 +352,7 @@ def make_nvmnet(programs=None, registers=None):
 
     # set up activator
     activator, learning_rule = logistic_activator, hebbian
-    # activator, learning_rule = tanh_activator, hebbian
+    #activator, learning_rule = tanh_activator, hebbian
 
     # make network
     layer_shape = (16, 16)
